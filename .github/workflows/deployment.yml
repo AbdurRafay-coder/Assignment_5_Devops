@@ -37,8 +37,8 @@ jobs:
       - name: Build and Push Images
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          FRONT_REPO: frontend-repo-name 
-          BACK_REPO: backend-repo-name  
+          FRONT_REPO: notes-frontend
+          BACK_REPO: notes-backend  
         run: |
           docker build -t $ECR_REGISTRY/$FRONT_REPO:latest ./frontend
           docker push $ECR_REGISTRY/$FRONT_REPO:latest
@@ -56,8 +56,8 @@ jobs:
             cd ~/Assignment_5_Devops
             git pull origin master
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-            export FRONTEND_REPO=frontend-repo-name
-            export BACKEND_REPO=backend-repo-name
+            export FRONTEND_REPO=notes-frontend
+            export BACKEND_REPO=notes-backend
             docker compose pull
             docker compose up -d
 
