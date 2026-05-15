@@ -52,12 +52,20 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Login to ECR on the EC2
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            
+            # Navigate and update code
             cd ~/Assignment_5_Devops
             git pull origin master
+            
+            # Export variables for Docker Compose
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
             export FRONTEND_REPO=notes-frontend
             export BACKEND_REPO=notes-backend
+            
+            # Refresh containers (Fixes the naming conflict)
+            docker compose down --remove-orphans
             docker compose pull
             docker compose up -d
 
