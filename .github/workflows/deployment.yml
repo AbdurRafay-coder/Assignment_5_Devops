@@ -58,6 +58,7 @@ jobs:
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
             export FRONTEND_REPO=notes-frontend
             export BACKEND_REPO=notes-backend
+            docker compose down
             docker compose pull
             docker compose up -d
 
