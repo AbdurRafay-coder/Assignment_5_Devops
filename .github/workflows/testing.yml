@@ -7,6 +7,9 @@ run-name: >+
   for repository':' ${{github.repository}}
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
