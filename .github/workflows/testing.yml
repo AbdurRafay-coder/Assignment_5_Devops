@@ -1,27 +1,63 @@
-test-frontend:
+name: CICD Pipeline for tsting React APP A4
+
+run-name: >+
+  CI Pipeline triggered by ${{github.actor}}
+  on event':' ${{github.event_name}}
+  -> branch':' ${{github.ref_name}}
+  for repository':' ${{github.repository}}
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test-frontend:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Install & Test
-        run: |
-          cd frontend
-          npm install
-          npm run lint
-          npm test -- --watchAll=false
-          npm run build
+
+      - name: Install Dependencies
+        run: cd frontend && npm install
+
+      - name: Linting
+        run: cd frontend && npm run lint
+
+      - name: Run Unit Tests
+        run: cd frontend && npm test -- --watchAll=false
+
+      - name: Build Application
+        run: cd frontend && CI=false npm run build
+
+      - name: Upload Frontend Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
 
   test-backend:
+    name: Test Backend Application
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Install & Syntax Check
-        run: |
-          cd backend
-          npm install
-          node --check server.js
+
+      - name: Install Dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Check Backend Syntax
+        working-directory: ./backend
+        run: node --check server.js
+
