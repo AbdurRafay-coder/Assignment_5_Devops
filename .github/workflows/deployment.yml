@@ -1,0 +1,82 @@
+name: CD Pipeline - Automated Deployment
+
+on:
+  workflow_run:
+    workflows: ["CICD Pipeline for tsting React APP A4"]
+    types: [completed]
+  workflow_dispatch: # Allows manual trigger via the button
+
+jobs:
+  deploy:
+    # CRITICAL: Only runs if the testing workflow succeeded
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'workflow_dispatch' }}
+    name: Build, Push, and Deploy
+    runs-on: ubuntu-latest
+    
+    env:
+      # Logic to determine if the test run came from a Pull Request or a Push to master
+      IS_PR: ${{ github.event.workflow_run.event == 'pull_request' }}
+      TARGET_HOST: ${{ (github.event.workflow_run.event == 'pull_request') && secrets.EC2_HOST_TESTING || secrets.EC2_HOST_STAGING }}
+      ENV_NAME: ${{ (github.event.workflow_run.event == 'pull_request') && 'Testing' || 'Staging' }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Images
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          FRONT_REPO: frontend-repo-name 
+          BACK_REPO: backend-repo-name  
+        run: |
+          docker build -t $ECR_REGISTRY/$FRONT_REPO:latest ./frontend
+          docker push $ECR_REGISTRY/$FRONT_REPO:latest
+          docker build -t $ECR_REGISTRY/$BACK_REPO:latest ./backend
+          docker push $ECR_REGISTRY/$BACK_REPO:latest
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.TARGET_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            cd ~/Assignment_5_Devops
+            git pull origin master
+            export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+            export FRONTEND_REPO=frontend-repo-name
+            export BACKEND_REPO=backend-repo-name
+            docker compose pull
+            docker compose up -d
+
+      - name: Notify QA/Client (Success)
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ Successfully Deployed to ${{ env.ENV_NAME }}"
+          to: ${{ secrets.QA_EMAIL }}
+          from: GitHub Actions
+          body: |
+            Deployment to the ${{ env.ENV_NAME }} server was successful!
+            
+            Access the project here: http://${{ env.TARGET_HOST }}
+            
+            Details:
+            - Trigger Event: ${{ github.event.workflow_run.event || 'Manual' }}
+            - Environment: ${{ env.ENV_NAME }}
