@@ -65,6 +65,7 @@ jobs:
             export BACKEND_REPO=notes-backend
             
             # Refresh containers (Fixes the naming conflict)
+            docker system prune -a --volumes
             docker rm -f notes_postgres backend_container frontend_container || true
             docker compose pull
             docker compose up -d
