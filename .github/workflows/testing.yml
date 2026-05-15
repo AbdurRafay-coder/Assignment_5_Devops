@@ -1,0 +1,27 @@
+test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install & Test
+        run: |
+          cd frontend
+          npm install
+          npm run lint
+          npm test -- --watchAll=false
+          npm run build
+
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install & Syntax Check
+        run: |
+          cd backend
+          npm install
+          node --check server.js
